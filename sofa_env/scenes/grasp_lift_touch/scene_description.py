@@ -108,7 +108,7 @@ def createScene(
             "lookAt": determine_look_at(np.array([-94.5, -113.6, -237.2]), np.array([0.683409, -0.684564, 0.0405591, 0.25036])),
         },
         z_near=10,
-        z_far=500,
+        z_far=600,
         width_viewport=image_shape[0],
         height_viewport=image_shape[1],
     )
