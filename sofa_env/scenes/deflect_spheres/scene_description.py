@@ -123,13 +123,14 @@ def createScene(
     root_node.addObject("LightManager")
     root_node.addObject("DirectionalLight", direction=[-1, -1, 1], color=[1.3] * 3)
 
-    pose = np.array([0.0, -depth - 40, height + 40, 0.0, 0.0, 0.0, 1.0])
+    pose = np.array([0.0, -depth - 50, height + 60, 0.0, 0.0, 0.0, 1.0])
     pose[3:] = rotation_matrix_to_quaternion(euler_to_rotation_matrix(np.array([58.0, 0.0, 0.0])))
     placement_kwargs = {
         "position": pose[:3],
         "orientation": pose[3:],
     }
-    placement_kwargs["lookAt"] = determine_look_at(camera_position=placement_kwargs["position"], camera_orientation=placement_kwargs["orientation"])
+    # placement_kwargs["lookAt"] = determine_look_at(camera_position=placement_kwargs["position"], camera_orientation=placement_kwargs["orientation"])
+    placement_kwargs["lookAt"] = np.array([0.0, 10.0, 0.0])
     camera = PhysicalCamera(
         root_node=root_node,
         placement_kwargs=placement_kwargs,

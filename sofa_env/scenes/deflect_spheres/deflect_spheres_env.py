@@ -106,6 +106,7 @@ class DeflectSpheresEnv(SofaEnv):
         min_deflection_distance: float = 3.0,
         mode: Mode = Mode.WITH_REPLACEMENT,
         allow_deflection_with_instrument_shaft: bool = False,
+        camera_reset_noise: Optional[np.ndarray] = None,
     ) -> None:
         # Pass image shape to the scene creation function
         if not isinstance(create_scene_kwargs, dict):
@@ -138,6 +139,15 @@ class DeflectSpheresEnv(SofaEnv):
             render_framework=render_framework,
             create_scene_kwargs=create_scene_kwargs,
         )
+
+        # Randomize camera pose on reset
+        self.camera_reset_noise = camera_reset_noise
+        if camera_reset_noise is not None:
+            if not isinstance(camera_reset_noise, np.ndarray) and not camera_reset_noise.shape == (6,):
+                raise ValueError(
+                    "Please pass the camera_reset_noise as a numpy array with 6 values for maximum deviation \
+                        from the original camera pose in xyz cartesian position and cartesian point to look at."
+                )
 
         # How many simulation steps to wait before starting the episode
         self._settle_steps = settle_steps
@@ -583,6 +593,18 @@ class DeflectSpheresEnv(SofaEnv):
             else:
                 self.posts[self.active_post_index].set_state(State.ACTIVE_RIGHT)
 
+        # Reset camera
+        if self.camera_reset_noise is not None:
+            delta_position = self.rng.uniform(-self.camera_reset_noise[:3], self.camera_reset_noise[:3])
+            camera_position = self.camera.initial_pose[:3] + delta_position
+            self.camera.set_position(camera_position)
+            # Reset orientation to avoid drift from set_look_at
+            self.camera.set_orientation(self.camera.initial_pose)
+
+            delta_look_at = self.rng.uniform(-self.camera_reset_noise[3:], self.camera_reset_noise[3:])
+            camera_look_at = self.camera.initial_look_at + delta_look_at
+            self.camera.set_look_at(camera_look_at)
+
         # Clear the episode info values
         for key in self.episode_info:
             self.episode_info[key] = 0.0
@@ -635,9 +657,9 @@ if __name__ == "__main__":
         observation_type=ObservationType.STATE,
         render_mode=RenderMode.HUMAN,
         action_type=ActionType.VELOCITY,
-        image_shape=(124, 124),
+        image_shape=(800, 800),
         frame_skip=1,
-        time_step=0.1,
+        time_step=0.01,
         settle_steps=10,
         single_agent=False,
         individual_agents=True,
@@ -650,12 +672,12 @@ if __name__ == "__main__":
     fps_list = deque(maxlen=100)
     counter = 0
     while not done:
-        for _ in range(100):
+        for _ in range(1000):
             start = time.perf_counter()
             action = env.action_space.sample()
             obs, reward, terminated, truncated, info = env.step(action)
-            if counter % 300 == 0:
-                env.reset(seed=42)
+            if counter % 3000 == 0:
+                env.reset()
                 counter = 0
             counter += 1
             end = time.perf_counter()
