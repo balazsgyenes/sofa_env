@@ -12,6 +12,7 @@ import Sofa.Core
 
 from sofa_env.base import RenderMode, SofaEnv, RenderFramework
 from sofa_env.scenes.grasp_lift_touch.sofa_objects.liver import Liver
+from sofa_env.sofa_templates.camera import Camera
 from sofa_env.utils.camera import world_to_pixel_coordinates
 from sofa_env.utils.math_helper import distance_between_line_segments, farthest_point_sampling
 
@@ -141,6 +142,7 @@ class GraspLiftTouchEnv(SofaEnv):
         individual_rewards: bool = False,
         action_type: ActionType = ActionType.CONTINUOUS,
         on_reset_callbacks: Optional[List[Callable]] = None,
+        camera_reset_noise: Optional[np.ndarray] = None,
         reward_amount_dict: dict = {
             Phase.ANY: {
                 "collision_cauter_gripper": -0.0,
@@ -259,6 +261,15 @@ class GraspLiftTouchEnv(SofaEnv):
 
         # Callback functions called on reset
         self.on_reset_callbacks = on_reset_callbacks if on_reset_callbacks is not None else []
+
+        # Randomize camera pose on reset
+        self.camera_reset_noise = camera_reset_noise
+        if camera_reset_noise is not None:
+            if not isinstance(camera_reset_noise, np.ndarray) and not camera_reset_noise.shape == (6,):
+                raise ValueError(
+                    "Please pass the camera_reset_noise as a numpy array with 6 values for maximum deviation \
+                        from the original camera pose in xyz cartesian position and cartesian point to look at."
+                )
 
         ###########################
         # Set up observation spaces
@@ -422,6 +433,8 @@ class GraspLiftTouchEnv(SofaEnv):
         self.liver: Liver = self.scene_creation_result["liver"]
         self.poi: PointOfInterest = self.scene_creation_result["poi"]
         self.contact_listener: Dict[str, Sofa.Core.ContactListener] = self.scene_creation_result["contact_listener"]
+        self.camera: Camera = self.scene_creation_result["camera"]
+
 
         self.target_position = np.empty(3, dtype=np.float32)
         self._distance_normalization_factor = 1.0 / np.linalg.norm(self.gripper.cartesian_workspace["high"] - self.gripper.cartesian_workspace["low"])
@@ -501,6 +514,18 @@ class GraspLiftTouchEnv(SofaEnv):
             )
             self.gallbladder_tracking_indices = tracking_point_indices
             self.unconsumed_seed = False
+
+        # Reset camera
+        if self.camera_reset_noise is not None:
+            delta_position = self.rng.uniform(-self.camera_reset_noise[:3], self.camera_reset_noise[:3])
+            camera_position = self.camera.initial_pose[:3] + delta_position
+            self.camera.set_position(camera_position)
+            # Reset orientation to avoid drift from set_look_at
+            self.camera.set_orientation(self.camera.initial_pose)
+
+            delta_look_at = self.rng.uniform(-self.camera_reset_noise[3:], self.camera_reset_noise[3:])
+            camera_look_at = self.camera.initial_look_at + delta_look_at
+            self.camera.set_look_at(camera_look_at)
 
         # Reset the phase to the one set on environment creation
         self.active_phase = self.starting_phase
