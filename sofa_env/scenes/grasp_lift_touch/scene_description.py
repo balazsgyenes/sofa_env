@@ -109,7 +109,7 @@ def createScene(
             "lookAt": np.array([0.0, 0.0, 0.0]),
         },
         z_near=10,
-        z_far=600,
+        z_far=800,
         width_viewport=image_shape[0],
         height_viewport=image_shape[1],
     )
@@ -159,7 +159,7 @@ def createScene(
         parent_node=scene_node,
         name="PointOfInterest",
         visual_mesh_path=MODEL_MESH_DIR / "unit_sphere.stl",
-        scale=6.0,
+        scale=8.0,
         randomized_pose=randomize_poi_position,
     )
 
