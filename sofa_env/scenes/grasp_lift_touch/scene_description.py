@@ -159,7 +159,7 @@ def createScene(
         parent_node=scene_node,
         name="PointOfInterest",
         visual_mesh_path=MODEL_MESH_DIR / "unit_sphere.stl",
-        scale=8.0,
+        scale=6.0,
         randomized_pose=randomize_poi_position,
     )
 
